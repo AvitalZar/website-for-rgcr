@@ -1,4 +1,5 @@
 flask
+sortedcontainers
 
 # Should be replaced with the real lib once my func published into it.
 git+https://github.com/AvitalZar/pref_voting.git@rgcr-func#pref_voting
