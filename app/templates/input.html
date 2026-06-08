@@ -1,0 +1,324 @@
+{% extends 'base.html' %}
+
+{% block title %}Input Data - Algorithm Demo{% endblock %}
+
+{% block content %}
+<style>
+.custom-purple-checkbox:checked {
+    background-color: #a87dff !important;
+    border-color: #a87dff !important;
+}
+.custom-purple-checkbox:focus {
+    border-color: #c5a8ff !important;
+    box-shadow: 0 0 0 0.25px rgba(168, 125, 255, 0.25) !important;
+}
+</style>
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <h2 class="mb-3 text-start">Algorithm Demonstration: Input Stage</h2>
+        <p class="text-muted text-start">Configure your reviewers, items, and scores below to see the algorithm process the data.</p>
+        
+        <div class="mb-4 text-start">
+            <button type="button" class="btn" style="color:#4b0082; border-color:#4b0082;" onclick="generateFullyRandomSetup()">
+                🎲 Quick Start: Generate Randomly
+            </button>
+        </div>
+
+        <hr>
+
+        <form action="/results" method="POST" id="configForm" class="mt-4 text-start" onsubmit="return validateFormBeforeSubmit()">
+            
+            <div class="card mb-4 shadow-sm">
+                <div class="card-header bg-dark text-white fw-bold">Define Input Size</div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="num_reviewers" class="form-label fw-bold">Number of Reviewers:</label>
+                            <input type="number" class="form-control" id="num_reviewers" name="num_reviewers" min="1" required placeholder="e.g., 3">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="num_items" class="form-label fw-bold">Number of Items (Articles):</label>
+                            <input type="number" class="form-control" id="num_items" name="num_items" min="1" required placeholder="e.g., 5">
+                        </div>
+                    </div>
+                    
+                    <div class="mt-3 row g-3 align-items-end">
+                        <div class="col-md-4">
+                            <label for="max_score" class="form-label text-muted small">Max Allowable Score: (integer)</label>
+                            <input type="number" class="form-control form-control-sm" id="max_score" name="max_score" value="100" min="1" step="1" required onchange="handleMaxScoreChange()" oninput="handleMaxScoreChange()">
+                            <div class="invalid-feedback text-danger small mt-1" id="max_score_error" style="display: none;">
+                                Max score must be a valid integer.
+                            </div>
+                        </div>
+                        <div class="col-md-8 text-end">
+                            <button type="button" class="btn btn-sm" style="background-color:#d8b8ff; border-color:#c5a8ff; color:#4b0082;" onclick="buildStep2(false)">
+                                Next: Configure Input →
+                            </button>
+                            <button type="button" class="btn btn-sm btn-secondary ms-2" onclick="buildStep2(true)">
+                                🎲 Generate Random Input
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="execution" class="mt-4 border-top pt-3 text-start d-none">
+                <button type="submit" class="btn btn-success btn-lg">Execute Algorithm 🚀</button>
+                <hr>
+            </div>
+
+            <div id="step2_container" class="card mb-4 shadow-sm d-none">
+                <div class="card-header fw-bold" style="background-color:#d8b8ff; color:#4b0082;">Assign Scores</div>
+                <div class="card-body">
+                    <p class="small text-muted mb-3">
+                        Enter an integer score between 0 and <span id="display_max_score" class="fw-bold text-dark">100</span>.
+                    </p>
+                    
+                    <div id="matrix_dynamic_area"></div>
+
+                    <div class="mt-4 border-top pt-3 text-end">
+                        <button type="submit" class="btn btn-success btn-lg">Execute Algorithm 🚀</button>
+                    </div>
+                </div>
+            </div>
+
+        </form>
+    </div>
+</div>
+
+<script>
+function validateMaxScoreField() {
+    const maxScoreInput = document.getElementById('max_score');
+    const val = parseFloat(maxScoreInput.value);
+    const errorDiv = document.getElementById('max_score_error');
+
+    if (isNaN(val) || val < 1 || !Number.isInteger(val)) {
+        maxScoreInput.classList.add('is-invalid');
+        errorDiv.style.display = 'block';
+        return false;
+    } else {
+        maxScoreInput.classList.remove('is-invalid');
+        errorDiv.style.display = 'none';
+        return true;
+    }
+}
+
+function handleMaxScoreChange() {
+    const isValid = validateMaxScoreField();
+    if (!isValid) return;
+
+    const maxScore = parseInt(document.getElementById('max_score').value) || 100;
+    const displaySpan = document.getElementById('display_max_score');
+    if (displaySpan) displaySpan.innerText = maxScore;
+    
+    const inputs = document.querySelectorAll('.matrix-score-input');
+    inputs.forEach(input => {
+        input.max = maxScore;
+        validateIndividualInput(input);
+    });
+}
+
+// Dynamically creates the scoring interface
+function buildStep2(shouldRandomizeMatrix = false) {
+    if (!validateMaxScoreField()) {
+        alert("Please enter a valid integer for the Max Allowable Score first.");
+        return;
+    }
+
+    const numReviewers = parseInt(document.getElementById('num_reviewers').value);
+    const numItems = parseInt(document.getElementById('num_items').value);
+    const maxScore = parseInt(document.getElementById('max_score').value) || 100;
+
+    if (!numItems || !numReviewers || numItems < 1 || numReviewers < 1) {
+        alert("Please enter a valid number of reviewers and items first.");
+        return;
+    }
+
+    document.getElementById('display_max_score').innerText = maxScore;
+    const container = document.getElementById('matrix_dynamic_area');
+    container.innerHTML = ''; 
+
+    // --- Step 1: Create a global shuffled list of all items (acyclic underlying hierarchy) ---
+    let masterItemOrder = [];
+    for (let i = 1; i <= numItems; i++) {
+        masterItemOrder.push(i);
+    }
+    if (shouldRandomizeMatrix) {
+        for (let i = numItems - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [masterItemOrder[i], masterItemOrder[j]] = [masterItemOrder[j], masterItemOrder[i]];
+    }
+    }
+
+    // Loop to build the interface UI for each reviewer
+    for (let r = 1; r <= numReviewers; r++) {
+        let reviewerHtml = `
+            <div class="p-3 mb-3 border rounded bg-light">
+                <h5 class="mb-3" style="color:#7d55ff;">Reviewer #${r}</h5>
+                <div class="row g-2 text-center border-bottom pb-2 mb-2 font-monospace small fw-bold text-muted">
+                    <div class="col-3 text-start"></div>
+                    <div class="col-3 text-start">Item (Article)</div>
+                    <div class="col-6">Score (0 - ${maxScore})</div>
+                </div>
+        `;
+
+        // Temporary helper object to hold generated random scores for the current reviewer
+        let generatedScoresForReviewer = {};
+
+        if (shouldRandomizeMatrix) {
+            // --- Step 2: Select random items ---
+            let activeItemsForThisReviewer = [];
+            for (let i = 1; i <= numItems; i++) {
+                // 40% chance that the reviewer selected this item to review
+                if (Math.random() > 0.60) {
+                    activeItemsForThisReviewer.push(i);
+                }
+            }
+
+            const totalUniqueScoresAvailable = maxScore + 1;
+            
+            if (activeItemsForThisReviewer.length > totalUniqueScoresAvailable) {
+                for (let i = activeItemsForThisReviewer.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [activeItemsForThisReviewer[i], activeItemsForThisReviewer[j]] = [activeItemsForThisReviewer[j], activeItemsForThisReviewer[i]];
+                }
+
+                activeItemsForThisReviewer = activeItemsForThisReviewer.slice(0, totalUniqueScoresAvailable);
+                activeItemsForThisReviewer.sort((a, b) => a - b);
+            }
+
+            // Filter the master shuffled list to contain only the items this reviewer selected
+            let reviewerOrderedSelection = masterItemOrder.filter(item => activeItemsForThisReviewer.includes(item));
+            let totalSelected = reviewerOrderedSelection.length;
+
+            if (totalSelected > 0) {
+                let availableScores = [];
+                for (let s = 0; s <= maxScore; s++) {
+                    availableScores.push(s);
+                }
+
+                for (let i = availableScores.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [availableScores[i], availableScores[j]] = [availableScores[j], availableScores[i]];
+                }
+
+                let randomScoresPool = availableScores.slice(0, totalSelected);
+
+                randomScoresPool.sort((a, b) => a - b);
+
+                // Map the sorted scores to the corresponding items based on their occurrence in the shuffled list
+                reviewerOrderedSelection.forEach((item, index) => {
+                    generatedScoresForReviewer[item] = randomScoresPool[index];
+                });
+            }
+        }
+
+        // Render input fields in HTML (always displayed sequentially 1, 2, 3... for user convenience)
+        for (let i = 1; i <= numItems; i++) {
+            const hasScore = generatedScoresForReviewer[i] !== undefined;
+            const scoreValue = hasScore ? generatedScoresForReviewer[i] : '';
+
+            reviewerHtml += `
+                <div class="row g-2 align-items-center mb-2">
+                    <div class="col-3 text-start">
+                        <input class="form-check-input ms-2 custom-purple-checkbox" type="checkbox" name="active_r${r}_i${i}" id="active_r${r}_i${i}" ${hasScore ? 'checked' : ''} onchange="toggleInputState(${r}, ${i})">
+                    </div>
+                    <div class="col-3 text-start">
+                        <span class="badge bg-secondary">Item #${i}</span>
+                    </div>
+                    <div class="col-6">
+                        <input type="number" 
+                               class="form-control form-control-sm matrix-score-input" 
+                               name="score_r${r}_i${i}" 
+                               id="score_r${r}_i${i}" 
+                               min="0" 
+                               max="${maxScore}" 
+                               step="1" 
+                               value="${scoreValue}"
+                               ${hasScore ? 'required' : 'disabled'}
+                               oninput="validateIndividualInput(this)">
+                        <div class="invalid-feedback text-danger small mt-1" id="err_r${r}_i${i}" style="display: none;">
+                            Must be an integer between 0 and ${maxScore}.
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        reviewerHtml += `</div>`;
+        container.innerHTML += reviewerHtml;
+    }
+    
+    document.getElementById('execution').classList.remove('d-none');
+
+    document.getElementById('step2_container').classList.remove('d-none');
+    document.getElementById('execution').scrollIntoView({ behavior: 'smooth' });
+}
+
+function toggleInputState(reviewer, item) {
+    const isReviewed = document.getElementById(`active_r${reviewer}_i${item}`).checked;
+    const scoreInput = document.getElementById(`score_r${reviewer}_i${item}`);
+    const errorDiv = document.getElementById(`err_r${reviewer}_i${item}`);
+    
+    scoreInput.disabled = !isReviewed;
+    
+    if (isReviewed) {
+        scoreInput.required = true;
+        scoreInput.value = 0; // Default starting value when activated
+        validateIndividualInput(scoreInput);
+    } else {
+        scoreInput.required = false;
+        scoreInput.value = '';
+        scoreInput.classList.remove('is-invalid');
+        errorDiv.style.display = 'none';
+    }
+}
+
+function validateIndividualInput(input) {
+    if (input.disabled) return true;
+
+    const val = parseFloat(input.value);
+    const min = parseInt(input.min);
+    const max = parseInt(input.max);
+    const errorDiv = document.getElementById(`err_${input.id}`);
+
+    if (isNaN(val) || val < min || val > max || !Number.isInteger(val)) {
+        input.classList.add('is-invalid'); // Native Bootstrap red border
+        errorDiv.innerText = `Must be an integer between ${min} and ${max}.`;
+        errorDiv.style.display = 'block';
+        return false;
+    } else {
+        input.classList.remove('is-invalid');
+        errorDiv.style.display = 'none';
+        return true;
+    }
+}
+
+function validateFormBeforeSubmit() {
+    let isFormValid = validateMaxScoreField();
+
+    const inputs = document.querySelectorAll('.matrix-score-input');
+    inputs.forEach(input => {
+        if (!validateIndividualInput(input)) {
+            isFormValid = false;
+        }
+    });
+
+    if (!isFormValid) {
+        alert("Please correct the highlighted red errors in your active scores before submitting.");
+    }
+    return isFormValid;
+}
+
+function generateFullyRandomSetup() {
+    document.getElementById('num_reviewers').value = Math.floor(Math.random() * 11) + 10; // 10 to 20 Reviewers
+    document.getElementById('num_items').value = Math.floor(Math.random() * 16) + 15;    // 15 to 30 Items
+    
+    document.getElementById('max_score').value = 100;    
+    validateMaxScoreField();
+
+    buildStep2(true);
+}
+</script>
+{% endblock %}

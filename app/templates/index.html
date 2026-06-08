@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+
+{% block title %}Home - Algorithm Explanation{% endblock %}
+
+{% block content %}
+<div class="p-5 mb-4 bg-light rounded-3 text-center">
+    <h1 class="display-5 fw-bold">Grade Calibrated Ranking Algorithm</h1>
+    <p class="lead mt-3">
+        This is a demonstration of my imlementation of the ranking algorithm<br>
+		presented in the paper
+		<strong>Your 2 is My 1, Your 3 is My 9: Handling Arbitrary Miscalibrations in Ratings</strong><br>
+		<a href="https://arxiv.org/abs/1806.05085" target="_blank">[https://arxiv.org/abs/1806.05085]</a><br>
+		The algorithm also described in <a href="https://blog.ml.cmu.edu/2019/05/04/your-2-is-my-1-your-3-is-my-9-handling-crazy-miscalibrations-in-ratings-from-people/" target="_blank">This blog</a>.
+    </p>
+	<p class="lead mt-3">
+		The paper's core algorithm uses a probabilistic method to estimate the final ranking
+		of a set of items evaluated by different reviewers.<br>
+		It leverages the relative rankings provided by the reviewers
+		(i.e., if a reviewer scores item A higher than item B, A is ranked higher than B),
+		as well as the raw scores.
+	</p>
+	<p class="lead mt-3 text-start">
+		The method works as follows:<br>
+		It first establishes a baseline ranking based solely on the reviewers' relative preferences.
+		Then, for items that do not conflict with these relative rankings,
+		it adjusts the order by flipping items with a probability <strong>x</strong>.<br>
+		This probability <strong>x</strong> is higher when the score difference between the two items being considered
+		for a flip is large.<br>
+		Means, an item with a significantly higher score is more likely to be ranked higher.<br>
+		Mathematically, the probability of flipping is defined as <strong>x = <sup>1+w(score_diff)</sup>&frasl;<sub>2</sub></strong>,
+		where <strong>score_diff</strong> is the absolute difference in scores between the two items,
+		and <strong>w</strong> is a strictly increasing function that maps score differences to the range [0,1].
+	</p>
+    <a href="/input" class="btn btn-lg mt-4" style="background-color:#d8b8ff; border-color:#c5a8ff; color:#4b0082;">Try the Algorithm →</a>
+</div>
+{% endblock %}

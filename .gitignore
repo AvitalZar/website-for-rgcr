@@ -1,0 +1,27 @@
+# Virtual Environments
+.env
+.venv/
+env/
+venv/
+ENV/
+
+# VS Code Workspace
+.vscode/
+
+# OS Generated Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Compiled Files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Logs and Databases
+*.log
+*.sqlite3
