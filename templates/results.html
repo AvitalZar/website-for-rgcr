@@ -113,6 +113,17 @@
             </div>
         </div>
 
+		{% if result_ranking %}
+		<div class="text-center mt-4">
+			<form action="/download_csv" method="POST">
+				<input type="hidden" name="results_data" value="{{ result_ranking | join(',') }}">
+				<button type="submit" class="btn btn-primary">
+					⬇️ Download Results as CSV
+				</button>
+			</form>
+		</div>
+		{% endif %}
+
         <div class="text-center mb-5">
             <a href="/input" class="btn btn-secondary">← Return to Input Stage</a>
         </div>

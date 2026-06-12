@@ -19,10 +19,17 @@
         <h2 class="mb-3 text-start">Algorithm Demonstration: Input Stage</h2>
         <p class="text-muted text-start">Configure your reviewers, items, and scores below to see the algorithm process the data.</p>
         
-        <div class="mb-4 text-start">
+        <div class="mb-4 text-start d-flex gap-2">
             <button type="button" class="btn" style="color:#4b0082; border-color:#4b0082;" onclick="generateFullyRandomSetup()">
                 🎲 Quick Start: Generate Randomly
             </button>
+            
+            <form action="/results" method="POST" enctype="multipart/form-data" id="csvForm" class="m-0">
+                <input type="file" id="csvFileInput" name="csv_file" accept=".csv" style="display: none;" onchange="document.getElementById('csvForm').submit();">
+                <button type="button" class="btn btn-secondary" onclick="document.getElementById('csvFileInput').click();">
+                    📁 Upload from CSV
+                </button>
+            </form>
         </div>
 
         <hr>
