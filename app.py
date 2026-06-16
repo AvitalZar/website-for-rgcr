@@ -22,7 +22,7 @@ def input_page():
 # 3. Results Page Route (Handles the form submission and CSV upload)
 @app.route('/results', methods=['POST'])
 def results():
-    results = None
+    res = None
     function_logs = ""
     error_message = None
     reviewers_list = []
@@ -54,7 +54,7 @@ def results():
             
             try:
                 # Execute directly from the temporary CSV file path
-                results = rgcr_from_csv(temp_path)
+                res = rgcr_from_csv(temp_path)
             except Exception as e:
                 error_message = str(e)
             finally:
@@ -83,19 +83,19 @@ def results():
 
                 try:
                     # Execute standard RGCR process
-                    results = RGCR(reviewers_list, max_score)
+                    res = rgcr_estimator(reviewers_list, num_items)
                 except Exception as e:
                     error_message = str(e)
                 
                 # Calculate average result independently, mirroring the original code structure
-                avg_result = mean_estimator(reviewers_list, max_score)
+                avg_result = mean_estimator(reviewers_list, num_items)
 
     finally:
         logger.removeHandler(ch)
         function_logs = log_capture_string.getvalue()
 
     return render_template('results.html', 
-                           result_ranking=results,
+                           result_ranking=res,
                            avg_ranking=avg_result,
                            logs=function_logs,
                            error_message=error_message,
@@ -106,12 +106,19 @@ def results():
 def about_page():
     return render_template('about.html')
 
-def mean_estimator(reviewers_list, max_score):
-    items = range(max_score+1)
+def mean_estimator(reviewers_list, num_items):
+    items = range(1, num_items+1)
     keys = {k for d in reviewers_list for k in d}
     grouped = {k: [d[k] for d in reviewers_list if k in d] for k in keys}
     ranking = sorted(grouped, key=lambda k: sum(grouped[k]) / len(grouped[k]), reverse=True)
 
+    ranking_set = set(ranking)
+    ranking += [item for item in items if item not in ranking_set]
+    return ranking
+
+def rgcr_estimator(reviewers_list, num_items):
+    items = range(1, num_items+1)
+    ranking = RGCR(reviewers_list)
     ranking_set = set(ranking)
     ranking += [item for item in items if item not in ranking_set]
     return ranking
