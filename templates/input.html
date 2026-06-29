@@ -19,10 +19,14 @@
         <h2 class="mb-3 text-start">Algorithm Demonstration: Input Stage</h2>
         <p class="text-muted text-start">Configure your reviewers, items, and scores below to see the algorithm process the data.</p>
         
-        <div class="mb-4 text-start d-flex gap-2">
+        <div class="mb-4 text-start d-flex gap-2 align-items-center">
             <button type="button" class="btn" style="color:#4b0082; border-color:#4b0082;" onclick="generateFullyRandomSetup()">
                 🎲 Quick Start: Generate Randomly
             </button>
+            <div class="input-group" style="width: 220px;">
+                <span class="input-group-text small text-muted" style="font-size: 0.85rem;">Review Probability</span>
+                <input type="number" id="prob_top" class="form-control form-control-sm" value="0.4" min="0.01" max="0.99" step="0.01" onchange="syncProbability(this.value)">
+            </div>
         </div>
 
         <div>    
@@ -84,13 +88,18 @@
                                 Max score must be a valid integer.
                             </div>
                         </div>
-                        <div class="col-md-8 text-end">
-                            <button type="button" class="btn btn-sm ms-2" style="background-color:#d8b8ff; border-color:#c5a8ff; color:#4b0082;" onclick="buildStep2(false)">
+                        <div class="col-md-8 d-flex justify-content-end align-items-center gap-2">
+                            <button type="button" class="btn btn-sm" style="background-color:#d8b8ff; border-color:#c5a8ff; color:#4b0082;" onclick="buildStep2(false)">
                                 Next: Configure Input →
                             </button>
-                            <button type="button" class="btn btn-sm btn-secondary ms-2" onclick="buildStep2(true)">
+
+                            <button type="button" class="btn btn-sm btn-secondary" onclick="buildStep2(true)">
                                 🎲 Generate Random Input
                             </button>
+                            <div class="input-group input-group-sm" style="width: 220px;">
+                                <span class="input-group-text text-muted">Review Probability</span>
+                                <input type="number" id="prob_bottom" class="form-control" value="0.4" min="0.01" max="0.99" step="0.01" onchange="syncProbability(this.value)">
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -125,6 +134,12 @@
 </div>
 
 <script>
+// Sync both probability input fields
+function syncProbability(val) {
+    document.getElementById('prob_top').value = val;
+    document.getElementById('prob_bottom').value = val;
+}
+
 function downloadCSV() {
     let numReviewers = parseInt(document.getElementById('num_reviewers').value) || 3;
     let numItems = parseInt(document.getElementById('num_items').value) || 5;
@@ -151,7 +166,6 @@ function downloadCSV() {
     a.click();
 }
 
-// Existing functions...
 function validateMaxScoreField() {
     const maxScoreInput = document.getElementById('max_score');
     const val = parseFloat(maxScoreInput.value);
@@ -198,6 +212,21 @@ function buildStep2(shouldRandomizeMatrix = false) {
         return;
     }
 
+    // Probability logic
+    let reviewProbability = 0.4;
+    if (shouldRandomizeMatrix) {
+        let probInputStr = document.getElementById('prob_bottom').value;
+        if (probInputStr.trim() !== "") {
+            let probInput = parseFloat(probInputStr);
+            if (!isNaN(probInput) && probInput > 0 && probInput < 1) {
+                reviewProbability = probInput;
+            } else {
+                alert("Review Probability must be strictly greater than 0 and less than 1. Using default 0.4");
+                syncProbability("0.4");
+            }
+        }
+    }
+
     document.getElementById('display_max_score').innerText = maxScore;
     const container = document.getElementById('matrix_dynamic_area');
     container.innerHTML = ''; 
@@ -208,9 +237,9 @@ function buildStep2(shouldRandomizeMatrix = false) {
     }
     if (shouldRandomizeMatrix) {
         for (let i = numItems - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [masterItemOrder[i], masterItemOrder[j]] = [masterItemOrder[j], masterItemOrder[i]];
-    }
+            const j = Math.floor(Math.random() * (i + 1));
+            [masterItemOrder[i], masterItemOrder[j]] = [masterItemOrder[j], masterItemOrder[i]];
+        }
     }
 
     for (let r = 1; r <= numReviewers; r++) {
@@ -229,7 +258,8 @@ function buildStep2(shouldRandomizeMatrix = false) {
         if (shouldRandomizeMatrix) {
             let activeItemsForThisReviewer = [];
             for (let i = 1; i <= numItems; i++) {
-                if (Math.random() > 0.60) {
+                // Modified probability condition based on input
+                if (Math.random() < reviewProbability) {
                     activeItemsForThisReviewer.push(i);
                 }
             }
