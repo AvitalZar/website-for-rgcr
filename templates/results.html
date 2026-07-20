@@ -114,10 +114,10 @@
         </div>
 
 		{% if result_ranking %}
-		<div class="text-center mt-4">
+		<div class="text-center mt-4" style="background-color:#d8b8ff; border-color:#c5a8ff; color:#4b0082;">
 			<form action="/download_csv" method="POST">
 				<input type="hidden" name="results_data" value="{{ result_ranking | join(',') }}">
-				<button type="submit" class="btn" style="background-color:#d8b8ff; border-color:#c5a8ff; color:#4b0082;">
+				<button type="submit" class="btn btn-primary">
 					⬇️ Download Results as CSV
 				</button>
 			</form>
@@ -125,7 +125,12 @@
 		{% endif %}
 
         <div class="text-center mb-5">
-            <a href="/input" class="btn btn-secondary">← Return to Input Stage</a>
+            <form action="/input" method="POST" class="d-inline">
+                <input type="hidden" name="prefill_reviewers" value='{{ reviewers_list | tojson }}'>
+                <input type="hidden" name="prefill_num_items" value="{{ num_items }}">
+                <input type="hidden" name="prefill_max_score" value="{{ max_score }}">
+                <button type="submit" class="btn btn-secondary">← Return to Input Stage</button>
+            </form>
         </div>
         <div class="card shadow-sm mb-5">
             <div class="card-header bg-dark text-white fw-bold">

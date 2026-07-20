@@ -18,49 +18,29 @@
     <div class="col-md-8">
         <h2 class="mb-3 text-start">Algorithm Demonstration: Input Stage</h2>
         <p class="text-muted text-start">Configure your reviewers, items, and scores below to see the algorithm process the data.</p>
-        
-        <div class="mb-4 text-start d-flex gap-2 align-items-center">
+
+        {% if csv_error %}
+            <div class="alert alert-danger" role="alert">
+                ⚠️ {{ csv_error }}
+            </div>
+        {% endif %}
+
+        <div class="mb-4 text-start d-flex gap-2">
             <button type="button" class="btn" style="color:#4b0082; border-color:#4b0082;" onclick="generateFullyRandomSetup()">
                 🎲 Quick Start: Generate Randomly
             </button>
-            <div class="input-group" style="width: 220px;">
-                <span class="input-group-text small text-muted" style="font-size: 0.85rem;">Review Probability</span>
-                <input type="number" id="prob_top" class="form-control form-control-sm" value="0.4" min="0.01" max="0.99" step="0.01" onchange="syncProbability(this.value)">
-            </div>
-        </div>
-
-        <div>    
-            <form action="/results" method="POST" enctype="multipart/form-data" id="csvForm" class="m-0">
+            
+            <form action="/upload_csv" method="POST" enctype="multipart/form-data" id="csvForm" class="m-0">
                 <input type="file" id="csvFileInput" name="csv_file" accept=".csv" style="display: none;" onchange="document.getElementById('csvForm').submit();">
                 <button type="button" class="btn btn-secondary" onclick="document.getElementById('csvFileInput').click();">
-                    📁 Import CSV
+                    📁 Upload from CSV
                 </button>
             </form>
-
-            <div class="d-flex align-items-start">
-                <a href="#" class="text-muted small text-decoration-none" style="font-size:0.78rem; margin-top:2px;"
-                   onclick="toggleCsvFormat(event)">📄 CSV format</a>
-                <div id="csvFormatPopup" class="d-none ms-2 p-2 border rounded bg-white shadow-sm" style="font-size:0.75rem;">
-                    <div class="text-muted mb-1 fw-bold">Expected CSV structure:</div>
-                    <table class="table table-bordered table-sm mb-1" style="font-size:0.73rem; width:auto;">
-                        <thead class="table-light">
-                            <tr>
-                                <th>item</th>
-                                <th>Rev 1</th>
-                                <th>Rev 2</th>
-                                <th>Rev 3</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr><td>1</td><td>score</td><td>score</td><td>score</td></tr>
-                            <tr><td>2</td><td>score</td><td>score</td><td>score</td></tr>
-                            <tr><td>3</td><td>score</td><td>score</td><td>score</td></tr>
-                        </tbody>
-                    </table>
-                    <div class="text-muted" style="font-size:0.7rem;">Empty cells = reviewer skipped that item.</div>
-                </div>
-            </div>
         </div>
+
+        {% if prefill %}
+            <script id="prefill-data" type="application/json">{{ prefill | tojson }}</script>
+        {% endif %}
 
         <hr>
 
@@ -88,25 +68,16 @@
                                 Max score must be a valid integer.
                             </div>
                         </div>
-                        <div class="col-md-8 d-flex justify-content-end align-items-center gap-2">
+                        <div class="col-md-8 text-end">
                             <button type="button" class="btn btn-sm" style="background-color:#d8b8ff; border-color:#c5a8ff; color:#4b0082;" onclick="buildStep2(false)">
                                 Next: Configure Input →
                             </button>
-
-                            <button type="button" class="btn btn-sm btn-secondary" onclick="buildStep2(true)">
+                            <button type="button" class="btn btn-sm btn-secondary ms-2" onclick="buildStep2(true)">
                                 🎲 Generate Random Input
                             </button>
-                            <div class="input-group input-group-sm" style="width: 220px;">
-                                <span class="input-group-text text-muted">Review Probability</span>
-                                <input type="number" id="prob_bottom" class="form-control" value="0.4" min="0.01" max="0.99" step="0.01" onchange="syncProbability(this.value)">
-                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-
-            <div id="downloading">
-                <button type="button" class="btn btn-secondary" onclick="downloadCSV()">⬇ Download CSV</button>
             </div>
 
             <div id="execution" class="mt-4 border-top pt-3 text-start d-none">
@@ -124,48 +95,16 @@
                     <div id="matrix_dynamic_area"></div>
 
                     <div class="mt-4 border-top pt-3 text-end">
-                        <button type="button" class="btn btn-secondary text-white me-2" onclick="downloadCSV()">⬇ Download CSV</button>
                         <button type="submit" class="btn btn-success btn-lg">Execute Algorithm 🚀</button>
                     </div>
                 </div>
             </div>
+
         </form>
     </div>
 </div>
 
 <script>
-// Sync both probability input fields
-function syncProbability(val) {
-    document.getElementById('prob_top').value = val;
-    document.getElementById('prob_bottom').value = val;
-}
-
-function downloadCSV() {
-    let numReviewers = parseInt(document.getElementById('num_reviewers').value) || 3;
-    let numItems = parseInt(document.getElementById('num_items').value) || 5;
-    
-    let csvContent = "item";
-    for(let r=1; r<=numReviewers; r++) csvContent += ",Rev " + r;
-    csvContent += "\n";
-
-    for(let i=1; i<=numItems; i++) {
-        csvContent += i;
-        for(let r=1; r<=numReviewers; r++) {
-            let el = document.getElementById(`score_r${r}_i${i}`);
-            let val = (el && !el.disabled) ? el.value : "";
-            csvContent += "," + val;
-        }
-        csvContent += "\n";
-    }
-
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.setAttribute('href', url);
-    a.setAttribute('download', 'data_input.csv');
-    a.click();
-}
-
 function validateMaxScoreField() {
     const maxScoreInput = document.getElementById('max_score');
     const val = parseFloat(maxScoreInput.value);
@@ -197,7 +136,11 @@ function handleMaxScoreChange() {
     });
 }
 
-function buildStep2(shouldRandomizeMatrix = false) {
+// Dynamically creates the scoring interface.
+// presetData (optional): { num_reviewers, num_items, max_score, reviewers: [ {item: score, ...}, ... ] }
+// When provided, the grid is filled with these exact values (e.g. from a CSV
+// upload, or from returning from the results page) instead of random ones.
+function buildStep2(shouldRandomizeMatrix = false, presetData = null) {
     if (!validateMaxScoreField()) {
         alert("Please enter a valid integer for the Max Allowable Score first.");
         return;
@@ -212,36 +155,23 @@ function buildStep2(shouldRandomizeMatrix = false) {
         return;
     }
 
-    // Probability logic
-    let reviewProbability = 0.4;
-    if (shouldRandomizeMatrix) {
-        let probInputStr = document.getElementById('prob_bottom').value;
-        if (probInputStr.trim() !== "") {
-            let probInput = parseFloat(probInputStr);
-            if (!isNaN(probInput) && probInput > 0 && probInput < 1) {
-                reviewProbability = probInput;
-            } else {
-                alert("Review Probability must be strictly greater than 0 and less than 1. Using default 0.4");
-                syncProbability("0.4");
-            }
-        }
-    }
-
     document.getElementById('display_max_score').innerText = maxScore;
     const container = document.getElementById('matrix_dynamic_area');
     container.innerHTML = ''; 
 
+    // --- Step 1: Create a global shuffled list of all items (acyclic underlying hierarchy) ---
     let masterItemOrder = [];
     for (let i = 1; i <= numItems; i++) {
         masterItemOrder.push(i);
     }
-    if (shouldRandomizeMatrix) {
+    if (shouldRandomizeMatrix && !presetData) {
         for (let i = numItems - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [masterItemOrder[i], masterItemOrder[j]] = [masterItemOrder[j], masterItemOrder[i]];
-        }
+        const j = Math.floor(Math.random() * (i + 1));
+        [masterItemOrder[i], masterItemOrder[j]] = [masterItemOrder[j], masterItemOrder[i]];
+    }
     }
 
+    // Loop to build the interface UI for each reviewer
     for (let r = 1; r <= numReviewers; r++) {
         let reviewerHtml = `
             <div class="p-3 mb-3 border rounded bg-light">
@@ -253,13 +183,22 @@ function buildStep2(shouldRandomizeMatrix = false) {
                 </div>
         `;
 
+        // Temporary helper object to hold generated random scores for the current reviewer
         let generatedScoresForReviewer = {};
 
-        if (shouldRandomizeMatrix) {
+        if (presetData && presetData.reviewers && presetData.reviewers[r - 1]) {
+            // Use the exact preset scores for this reviewer (from CSV upload or
+            // from returning from the results page), converting item keys to numbers.
+            const presetReviewer = presetData.reviewers[r - 1];
+            Object.keys(presetReviewer).forEach(itemKey => {
+                generatedScoresForReviewer[parseInt(itemKey)] = presetReviewer[itemKey];
+            });
+        } else if (shouldRandomizeMatrix) {
+            // --- Step 2: Select random items ---
             let activeItemsForThisReviewer = [];
             for (let i = 1; i <= numItems; i++) {
-                // Modified probability condition based on input
-                if (Math.random() < reviewProbability) {
+                // 40% chance that the reviewer selected this item to review
+                if (Math.random() > 0.60) {
                     activeItemsForThisReviewer.push(i);
                 }
             }
@@ -276,6 +215,7 @@ function buildStep2(shouldRandomizeMatrix = false) {
                 activeItemsForThisReviewer.sort((a, b) => a - b);
             }
 
+            // Filter the master shuffled list to contain only the items this reviewer selected
             let reviewerOrderedSelection = masterItemOrder.filter(item => activeItemsForThisReviewer.includes(item));
             let totalSelected = reviewerOrderedSelection.length;
 
@@ -291,14 +231,17 @@ function buildStep2(shouldRandomizeMatrix = false) {
                 }
 
                 let randomScoresPool = availableScores.slice(0, totalSelected);
+
                 randomScoresPool.sort((a, b) => a - b);
 
+                // Map the sorted scores to the corresponding items based on their occurrence in the shuffled list
                 reviewerOrderedSelection.forEach((item, index) => {
                     generatedScoresForReviewer[item] = randomScoresPool[index];
                 });
             }
         }
 
+        // Render input fields in HTML (always displayed sequentially 1, 2, 3... for user convenience)
         for (let i = 1; i <= numItems; i++) {
             const hasScore = generatedScoresForReviewer[i] !== undefined;
             const scoreValue = hasScore ? generatedScoresForReviewer[i] : '';
@@ -335,8 +278,9 @@ function buildStep2(shouldRandomizeMatrix = false) {
     }
     
     document.getElementById('execution').classList.remove('d-none');
+
     document.getElementById('step2_container').classList.remove('d-none');
-    document.getElementById('downloading').scrollIntoView({ behavior: 'smooth' });
+    document.getElementById('execution').scrollIntoView({ behavior: 'smooth' });
 }
 
 function toggleInputState(reviewer, item) {
@@ -348,7 +292,7 @@ function toggleInputState(reviewer, item) {
     
     if (isReviewed) {
         scoreInput.required = true;
-        scoreInput.value = 0; 
+        scoreInput.value = 0; // Default starting value when activated
         validateIndividualInput(scoreInput);
     } else {
         scoreInput.required = false;
@@ -367,7 +311,7 @@ function validateIndividualInput(input) {
     const errorDiv = document.getElementById(`err_${input.id}`);
 
     if (isNaN(val) || val < min || val > max || !Number.isInteger(val)) {
-        input.classList.add('is-invalid');
+        input.classList.add('is-invalid'); // Native Bootstrap red border
         errorDiv.innerText = `Must be an integer between ${min} and ${max}.`;
         errorDiv.style.display = 'block';
         return false;
@@ -394,17 +338,29 @@ function validateFormBeforeSubmit() {
     return isFormValid;
 }
 
-function toggleCsvFormat(e) {
-    e.preventDefault();
-    const popup = document.getElementById('csvFormatPopup');
-    popup.classList.toggle('d-none');
-}
+document.addEventListener('DOMContentLoaded', function () {
+    const prefillEl = document.getElementById('prefill-data');
+    if (!prefillEl) return;
+
+    try {
+        const presetData = JSON.parse(prefillEl.textContent);
+
+        document.getElementById('num_reviewers').value = presetData.num_reviewers;
+        document.getElementById('num_items').value = presetData.num_items;
+        document.getElementById('max_score').value = presetData.max_score;
+        validateMaxScoreField();
+
+        buildStep2(false, presetData);
+    } catch (e) {
+        console.error('Failed to load prefilled data:', e);
+    }
+});
 
 function generateFullyRandomSetup() {
-    document.getElementById('num_reviewers').value = Math.floor(Math.random() * 11) + 10;
-    document.getElementById('num_items').value = Math.floor(Math.random() * 16) + 15;
+    document.getElementById('num_reviewers').value = Math.floor(Math.random() * 11) + 10; // 10 to 20 Reviewers
+    document.getElementById('num_items').value = Math.floor(Math.random() * 16) + 15;    // 15 to 30 Items
     
-    document.getElementById('max_score').value = 100;
+    document.getElementById('max_score').value = 100;    
     validateMaxScoreField();
 
     buildStep2(true);
