@@ -25,19 +25,25 @@ def input_page():
         try:
             reviewers_json = request.form.get('prefill_reviewers', '[]')
             raw_reviewers = json.loads(reviewers_json)
-            # JSON object keys are always strings - convert item ids back to int
-            reviewers_list = [
-                {int(item_id): score for item_id, score in reviewer.items()}
-                for reviewer in raw_reviewers
-            ]
+            # JSON object keys are always strings - convert item ids back to int if needed
+            try:
+                reviewers_list = [
+                    {int(item_id): score for item_id, score in reviewer.items()}
+                    for reviewer in raw_reviewers
+                ]
+            except ValueError:
+                reviewers_list = raw_reviewers  # Keep as is if conversion fails
+
             num_items = int(request.form.get('prefill_num_items', 0))
             max_score = int(request.form.get('prefill_max_score', 100))
+            item_names_json = request.form.get('prefill_item_names', '[]')
  
             prefill = {
                 'num_reviewers': len(reviewers_list),
                 'num_items': num_items,
                 'max_score': max_score,
                 'reviewers': reviewers_list,
+                'item_names': json.loads(item_names_json)
             }
         except (ValueError, TypeError, json.JSONDecodeError):
             # If anything about the submitted prefill data is malformed,
@@ -64,7 +70,8 @@ def upload_csv():
  
     try:
         reviewers_list = voters_from_csv(temp_path)
-        unique_items = ({item_id for reviewer in reviewers_list for item_id in reviewer})
+        # Create a dictionary to remove duplicates while preserving insertion order, then convert to list
+        unique_items = list(dict.fromkeys(item_id for reviewer in reviewers_list for item_id in reviewer))
         '''
         item_to_id = {item_id: idx for idx, item_id in enumerate(unique_items)}
         reviewers_list = [
@@ -80,6 +87,7 @@ def upload_csv():
             'num_items': num_items,
             'max_score': max_score,
             'reviewers': reviewers_list,
+            'item_names': list(unique_items)
         }
     except Exception as e:
         csv_error = f"Could not read the CSV file: {e}"
@@ -97,6 +105,7 @@ def results():
     error_message = None
     reviewers_list = []
     avg_result = []
+    item_names = []
     num_items = 0
     max_score = 100
  
@@ -121,26 +130,43 @@ def results():
         if num_reviewers_str:
             num_reviewers = int(num_reviewers_str)
             num_items = int(request.form.get('num_items'))
-            max_score = int(request.form.get('max_score', 10))
+            max_score = int(request.form.get('max_score', 100))
+
+            for key in request.form.keys():
+                if key.startswith("active_r"):
+                    # Split the key 'active_r1_Apple' into ['active', 'r1', 'Apple']
+                    parts = key.split('_', 2)
+                    if len(parts) == 3:
+                        raw_item_name = parts[2]
+                        
+                        # Convert to int if possible, otherwise keep as string
+                        try:
+                            parsed_item = int(raw_item_name)
+                        except ValueError:
+                            parsed_item = raw_item_name
+                            
+                        # Add to item_names list while maintaining insertion order
+                        if parsed_item not in item_names:
+                            item_names.append(parsed_item)
  
             for r in range(1, num_reviewers + 1):
                 reviewer_dict = {}
-                for i in range(1, num_items + 1):
-                    is_active = request.form.get(f'active_r{r}_i{i}') == 'on'
+                for item in item_names:
+                    is_active = request.form.get(f'active_r{r}_{item}') == 'on'
                     if is_active:
-                        score = int(request.form.get(f'score_r{r}_i{i}'))
-                        reviewer_dict[i] = score
+                        score = int(request.form.get(f'score_r{r}_{item}'))
+                        reviewer_dict[item] = score
  
                 reviewers_list.append(reviewer_dict)
  
             try:
                 # Execute standard RGCR process
-                results = rgcr_estimator(reviewers_list, num_items)
+                results = rgcr_estimator(reviewers_list, item_names)
             except Exception as e:
                 error_message = str(e)
  
             # Calculate average result independently, mirroring the original code structure
-            avg_result = mean_estimator(reviewers_list, max_score)
+            avg_result = mean_estimator(reviewers_list, item_names)
  
     finally:
         logger.removeHandler(ch)
@@ -153,15 +179,15 @@ def results():
                            error_message=error_message,
                            reviewers_list=reviewers_list,
                            num_items=num_items,
-                           max_score=max_score)
+                           max_score=max_score,
+                           item_names=item_names)
 
 # 4. About Page Route
 @app.route('/about')
 def about_page():
     return render_template('about.html')
 
-def mean_estimator(reviewers_list, num_items):
-    items = range(1, num_items+1)
+def mean_estimator(reviewers_list, items):
     keys = {k for d in reviewers_list for k in d}
     grouped = {k: [d[k] for d in reviewers_list if k in d] for k in keys}
     ranking = sorted(grouped, key=lambda k: sum(grouped[k]) / len(grouped[k]), reverse=True)
@@ -170,8 +196,7 @@ def mean_estimator(reviewers_list, num_items):
     ranking += [item for item in items if item not in ranking_set]
     return ranking
 
-def rgcr_estimator(reviewers_list, num_items):
-    items = range(1, num_items+1)
+def rgcr_estimator(reviewers_list, items):
     ranking = RGCR(reviewers_list)
     ranking_set = set(ranking)
     ranking += [item for item in items if item not in ranking_set]

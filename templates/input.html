@@ -128,6 +128,11 @@ function handleMaxScoreChange() {
     const maxScore = parseInt(document.getElementById('max_score').value) || 100;
     const displaySpan = document.getElementById('display_max_score');
     if (displaySpan) displaySpan.innerText = maxScore;
+
+    const headerSpans = document.querySelectorAll('.dynamic-max-score-display');
+    headerSpans.forEach(span => {
+        span.innerText = maxScore;
+    });
     
     const inputs = document.querySelectorAll('.matrix-score-input');
     inputs.forEach(input => {
@@ -159,6 +164,16 @@ function buildStep2(shouldRandomizeMatrix = false, presetData = null) {
     const container = document.getElementById('matrix_dynamic_area');
     container.innerHTML = ''; 
 
+    // --- Determine Item Keys (Strings from CSV, or numeric if random) ---
+    let itemKeys = [];
+    if (presetData && presetData.item_names && presetData.item_names.length > 0) {
+        itemKeys = presetData.item_names;
+    } else {
+        for (let i = 1; i <= numItems; i++) {
+            itemKeys.push(i);
+        }
+    }
+
     // --- Step 1: Create a global shuffled list of all items (acyclic underlying hierarchy) ---
     let masterItemOrder = [];
     for (let i = 1; i <= numItems; i++) {
@@ -179,7 +194,7 @@ function buildStep2(shouldRandomizeMatrix = false, presetData = null) {
                 <div class="row g-2 text-center border-bottom pb-2 mb-2 font-monospace small fw-bold text-muted">
                     <div class="col-3 text-start"></div>
                     <div class="col-3 text-start">Item (Article)</div>
-                    <div class="col-6">Score (0 - ${maxScore})</div>
+                    <div class="col-6">Score (0 - <span class="dynamic-max-score-display">${maxScore}</span>)</div>
                 </div>
         `;
 
@@ -188,18 +203,18 @@ function buildStep2(shouldRandomizeMatrix = false, presetData = null) {
 
         if (presetData && presetData.reviewers && presetData.reviewers[r - 1]) {
             // Use the exact preset scores for this reviewer (from CSV upload or
-            // from returning from the results page), converting item keys to numbers.
+            // from returning from the results page).
             const presetReviewer = presetData.reviewers[r - 1];
             Object.keys(presetReviewer).forEach(itemKey => {
-                generatedScoresForReviewer[parseInt(itemKey)] = presetReviewer[itemKey];
+                generatedScoresForReviewer[itemKey] = presetReviewer[itemKey];
             });
         } else if (shouldRandomizeMatrix) {
             // --- Step 2: Select random items ---
             let activeItemsForThisReviewer = [];
-            for (let i = 1; i <= numItems; i++) {
+            for (let i = 0; i < itemKeys.length; i++) {
                 // 40% chance that the reviewer selected this item to review
                 if (Math.random() > 0.60) {
-                    activeItemsForThisReviewer.push(i);
+                    activeItemsForThisReviewer.push(itemKeys[i]);
                 }
             }
 
@@ -212,7 +227,6 @@ function buildStep2(shouldRandomizeMatrix = false, presetData = null) {
                 }
 
                 activeItemsForThisReviewer = activeItemsForThisReviewer.slice(0, totalUniqueScoresAvailable);
-                activeItemsForThisReviewer.sort((a, b) => a - b);
             }
 
             // Filter the master shuffled list to contain only the items this reviewer selected
@@ -241,31 +255,42 @@ function buildStep2(shouldRandomizeMatrix = false, presetData = null) {
             }
         }
 
-        // Render input fields in HTML (always displayed sequentially 1, 2, 3... for user convenience)
-        for (let i = 1; i <= numItems; i++) {
-            const hasScore = generatedScoresForReviewer[i] !== undefined;
-            const scoreValue = hasScore ? generatedScoresForReviewer[i] : '';
+        // Render input fields in HTML (always displayed sequentially for user convenience)
+
+        for (let i = 0; i < itemKeys.length; i++) {
+            const itemKey = itemKeys[i];
+            const domId = i + 1;
+
+            const hasScore = generatedScoresForReviewer[itemKey] !== undefined;
+            const scoreValue = hasScore ? generatedScoresForReviewer[itemKey] : '';
+
+            const safeItemKeyAttr = String(itemKey).replace(/"/g, '&quot;');
 
             reviewerHtml += `
                 <div class="row g-2 align-items-center mb-2">
                     <div class="col-3 text-start">
-                        <input class="form-check-input ms-2 custom-purple-checkbox" type="checkbox" name="active_r${r}_i${i}" id="active_r${r}_i${i}" ${hasScore ? 'checked' : ''} onchange="toggleInputState(${r}, ${i})">
+                        <input class="form-check-input ms-2 custom-purple-checkbox" 
+                               type="checkbox" 
+                               name="active_r${r}_${safeItemKeyAttr}" 
+                               id="active_r${r}_i${domId}" 
+                               ${hasScore ? 'checked' : ''} 
+                               onchange="toggleInputState(${r}, ${domId})">
                     </div>
                     <div class="col-3 text-start">
-                        <span class="badge bg-secondary">Item #${i}</span>
+                        <span class="badge bg-secondary">Item: ${safeItemKeyAttr}</span>
                     </div>
                     <div class="col-6">
                         <input type="number" 
                                class="form-control form-control-sm matrix-score-input" 
-                               name="score_r${r}_i${i}" 
-                               id="score_r${r}_i${i}" 
+                               name="score_r${r}_${safeItemKeyAttr}" 
+                               id="score_r${r}_i${domId}" 
                                min="0" 
                                max="${maxScore}" 
                                step="1" 
                                value="${scoreValue}"
                                ${hasScore ? 'required' : 'disabled'}
                                oninput="validateIndividualInput(this)">
-                        <div class="invalid-feedback text-danger small mt-1" id="err_r${r}_i${i}" style="display: none;">
+                        <div class="invalid-feedback text-danger small mt-1" id="err_score_r${r}_i${domId}" style="display: none;">
                             Must be an integer between 0 and ${maxScore}.
                         </div>
                     </div>
@@ -283,10 +308,10 @@ function buildStep2(shouldRandomizeMatrix = false, presetData = null) {
     document.getElementById('execution').scrollIntoView({ behavior: 'smooth' });
 }
 
-function toggleInputState(reviewer, item) {
-    const isReviewed = document.getElementById(`active_r${reviewer}_i${item}`).checked;
-    const scoreInput = document.getElementById(`score_r${reviewer}_i${item}`);
-    const errorDiv = document.getElementById(`err_r${reviewer}_i${item}`);
+function toggleInputState(reviewer, domId) {
+    const isReviewed = document.getElementById(`active_r${reviewer}_i${domId}`).checked;
+    const scoreInput = document.getElementById(`score_r${reviewer}_i${domId}`);
+    const errorDiv = document.getElementById(`err_${scoreInput.id}`);
     
     scoreInput.disabled = !isReviewed;
     

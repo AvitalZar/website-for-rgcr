@@ -50,7 +50,7 @@
                     <ol class="list-group list-group-numbered">
                         {% for item in result_ranking[:10] %}
                             <li class="list-group-item d-flex justify-content-between align-items-center">
-                                <span class="ms-2 fw-bold">Item #{{ item }}</span>
+                                <span class="ms-2 fw-bold">Item: {{ item }}</span>
                                 <span class="badge rounded-pill" style="background-color:#d8b8ff; color:#4b0082;">Rank {{ loop.index }}</span>
                             </li>
                         {% else %}
@@ -71,7 +71,7 @@
                                 <ul class="list-group">
                                     {% for item in result_ranking %}
                                         <li class="list-group-item d-flex justify-content-between align-items-center bg-white">
-                                            <span class="ms-2">Item #{{ item }}</span>
+                                            <span class="ms-2">Item: {{ item }}</span>
                                             <span class="badge bg-secondary rounded-pill">Rank {{ loop.index }}</span>
                                         </li>
                                     {% endfor %}
@@ -102,7 +102,7 @@
                     <ol class="list-group list-group-numbered">
                         {% for item in avg_ranking[:10] %}
                             <li class="list-group-item d-flex justify-content-between align-items-center">
-                                <span class="ms-2 fw-bold">Item #{{ item }}</span>
+                                <span class="ms-2 fw-bold">Item: {{ item }}</span>
                                 <span class="badge bg-secondary rounded-pill">Rank {{ loop.index }}</span>
                             </li>
                         {% else %}
@@ -129,6 +129,7 @@
                 <input type="hidden" name="prefill_reviewers" value='{{ reviewers_list | tojson }}'>
                 <input type="hidden" name="prefill_num_items" value="{{ num_items }}">
                 <input type="hidden" name="prefill_max_score" value="{{ max_score }}">
+                <input type="hidden" name="prefill_item_names" value='{{ item_names | tojson }}'>
                 <button type="submit" class="btn btn-secondary">← Return to Input Stage</button>
             </form>
         </div>
