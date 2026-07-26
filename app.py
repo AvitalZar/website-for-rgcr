@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, Response
-from rgcr_lite import RGCR, voters_from_csv
+from rgcr_lite import RGCR, voters_from_csv, rgcr_avg
 import io
 import json
 import logging
@@ -108,6 +108,7 @@ def results():
     item_names = []
     num_items = 0
     max_score = 100
+    used_cycle_solver = False
  
     # Setup logger
     log_capture_string = io.StringIO()
@@ -158,10 +159,17 @@ def results():
                         reviewer_dict[item] = score
  
                 reviewers_list.append(reviewer_dict)
+
+            algorithm = request.form.get('algorithm', 'standard')
+            used_cycle_solver = (algorithm == 'cycle_solver')
  
             try:
-                # Execute standard RGCR process
-                results = rgcr_estimator(reviewers_list, item_names)
+                if used_cycle_solver:
+                    # Execute RGCR with cycle solver
+                    results = rgcr_avg_estimator(reviewers_list, item_names)
+                else:
+                    # Execute standard RGCR process
+                    results = rgcr_estimator(reviewers_list, item_names)
             except Exception as e:
                 error_message = str(e)
  
@@ -180,7 +188,8 @@ def results():
                            reviewers_list=reviewers_list,
                            num_items=num_items,
                            max_score=max_score,
-                           item_names=item_names)
+                           item_names=item_names,
+                           used_cycle_solver=used_cycle_solver)
 
 # 4. About Page Route
 @app.route('/about')
@@ -198,6 +207,12 @@ def mean_estimator(reviewers_list, items):
 
 def rgcr_estimator(reviewers_list, items):
     ranking = RGCR(reviewers_list)
+    ranking_set = set(ranking)
+    ranking += [item for item in items if item not in ranking_set]
+    return ranking
+
+def rgcr_avg_estimator(reviewers_list, items):
+    ranking = rgcr_avg(reviewers_list)
     ranking_set = set(ranking)
     ranking += [item for item in items if item not in ranking_set]
     return ranking

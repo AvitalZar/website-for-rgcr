@@ -81,7 +81,19 @@
             </div>
 
             <div id="execution" class="mt-4 border-top pt-3 text-start d-none">
-                <button type="submit" class="btn btn-success btn-lg">Execute Algorithm 🚀</button>
+                <button type="submit" name="algorithm" value="standard" class="btn btn-success btn-lg">Execute Algorithm 🚀</button>
+
+                <button type="button" class="btn btn-outline-secondary btn-sm ms-2" onclick="toggleCycleSolvers('1')">
+                    🔄 Cycle Solvers
+                </button>
+                <span class="ms-1" style="cursor: help;" title="The standard algorithm fails when reviewer preferences create a logical cycle or contradiction (e.g., Reviewer A ranks Item 1 &gt; 2, while Reviewer B ranks Item 2 &gt; 1). If your input creates such cycles, you may use cycle solvers.">❓</span>
+ 
+                <div id="cycleSolversPanel1" class="d-none mt-2">
+                    <button type="submit" name="algorithm" value="cycle_solver" class="btn btn-sm" style="background-color:#d8b8ff; border-color:#c5a8ff; color:#4b0082;">
+                        Execute Average Cycle Solver
+                    </button>
+                    <span class="ms-1" style="cursor: help;" title="This simplistic method groups any reviewers who share overlapping items, averaging their scores into a single profile. Note: This is a basic workaround to ensure execution, rather than a comprehensive or perfect solution.">❓</span>
+                </div>
                 <hr>
             </div>
 
@@ -95,7 +107,19 @@
                     <div id="matrix_dynamic_area"></div>
 
                     <div class="mt-4 border-top pt-3 text-end">
-                        <button type="submit" class="btn btn-success btn-lg">Execute Algorithm 🚀</button>
+                        <button type="submit" name="algorithm" value="standard" class="btn btn-success btn-lg">Execute Algorithm 🚀</button>
+
+                        <button type="button" class="btn btn-outline-secondary btn-sm ms-2" onclick="toggleCycleSolvers('2')">
+                            🔄 Cycle Solvers
+                        </button>
+                        <span class="ms-1" style="cursor: help;" title="The standard algorithm fails when reviewer preferences create a logical cycle or contradiction (e.g., Reviewer A ranks Item 1 &gt; 2, while Reviewer B ranks Item 2 &gt; 1). If your input creates such cycles, you may use cycle solvers.">❓</span>
+ 
+                        <div id="cycleSolversPanel2" class="d-none mt-2">
+                            <button type="submit" name="algorithm" value="cycle_solver" class="btn btn-sm" style="background-color:#d8b8ff; border-color:#c5a8ff; color:#4b0082;">
+                                Execute Average Cycle Solver
+                            </button>
+                            <span class="ms-1" style="cursor: help;" title="This simplistic method groups any reviewers who share overlapping items, averaging their scores into a single profile. Note: This is a basic workaround to ensure execution, rather than a comprehensive or perfect solution.">❓</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -306,6 +330,11 @@ function buildStep2(shouldRandomizeMatrix = false, presetData = null) {
 
     document.getElementById('step2_container').classList.remove('d-none');
     document.getElementById('execution').scrollIntoView({ behavior: 'smooth' });
+}
+
+function toggleCycleSolvers(suffix) {
+    const panel = document.getElementById('cycleSolversPanel' + suffix);
+    panel.classList.toggle('d-none');
 }
 
 function toggleInputState(reviewer, domId) {
